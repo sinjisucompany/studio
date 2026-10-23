@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#13111a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>보관소 스튜디오</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --bg:#f2f0f5;--surface:#fff;--fg:#1b1923;--muted:#696476;--line:#dbd7e3;
+  --accent:#6a4bc4;--accent-soft:#e8e1f8;--warm:#c2603a;--good:#2f7d5b;--bad:#b33a3a;
+  --display:"Gowun Batang",Georgia,serif;--body:"Noto Sans KR",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#13111a;--surface:#1d1a27;--fg:#ece9f3;--muted:#9a94aa;--line:#2f2b3c;--accent:#a58cf0;--accent-soft:#2c2442;--warm:#e88b62;--good:#5dc093;--bad:#e37373;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding:max(18px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 48px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--display);margin:0;line-height:1.3}
+h1{font-size:1.6rem}h2{font-size:1.15rem}
+.sub{color:var(--muted);font-size:.85rem;margin:2px 0 0}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+a.btn,button{font:inherit;font-size:.88rem;border-radius:999px;padding:9px 14px;border:1px solid var(--line);background:var(--surface);color:var(--fg);text-decoration:none;cursor:pointer}
+.primary{background:var(--accent)!important;color:var(--surface)!important;border-color:var(--accent)!important}
+button:disabled{opacity:.55}
+section{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stat{background:var(--surface);padding:12px}
+.stat b{display:block;font-family:var(--mono);font-size:1.25rem;font-weight:500}
+.stat span{font-size:.75rem;color:var(--muted)}
+.row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.88rem}
+.row b{font-family:var(--mono);font-weight:500}
+.gauge{height:14px;border-radius:7px;background:var(--accent-soft);overflow:hidden}
+.gauge i{display:block;height:100%;background:var(--accent);width:0;transition:width .6s}
+.pill{display:inline-block;font-size:.75rem;padding:3px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.pill.warn{color:var(--warm)}.pill.bad{color:var(--bad)}.pill.good{color:var(--good)}
+.msg{font-size:.85rem;color:var(--warm);margin:0}
+.note{font-size:.76rem;color:var(--muted);margin:0}
+svg{display:block;width:100%;height:auto}
+svg text{fill:var(--muted);font-family:var(--mono);font-size:10px}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:6.5em minmax(0,1fr) 3.6em;gap:8px;align-items:center;font-size:.82rem}
+.bar .t{height:9px;background:var(--accent-soft);border-radius:5px;overflow:hidden;display:flex}
+.bar .t i{display:block;height:100%;background:var(--accent)}
+.bar .v{text-align:right;font-family:var(--mono);color:var(--muted);font-size:.75rem}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.82rem;min-width:420px}
+th,td{padding:7px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:.72rem}
+td:first-child,th:first-child{text-align:left;white-space:normal}
+td{font-family:var(--mono)}td:first-child{font-family:var(--body)}
+td a{color:var(--fg)}
+input{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:.8rem}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="row" style="align-items:flex-end">
+    <div><h1>보관소 스튜디오</h1><p class="sub" id="chName">내 유튜브 채널 분석</p></div>
+    <button id="btnSettings">설정</button>
+  </header>
+
+  <!-- 설정 -->
+  <section id="setup" hidden>
+    <div class="card">
+      <h2>처음 한 번만 설정</h2>
+      <p class="note">구글 클라우드에서 만든 ‘OAuth 클라이언트 ID’를 붙여넣으세요. 이 휴대폰에만 저장돼요.</p>
+      <label for="cid" class="note">클라이언트 ID (끝이 .apps.googleusercontent.com)</label>
+      <input id="cid" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off">
+      <button class="primary" id="btnSaveCid">저장</button>
+      <p class="note">이 페이지 주소: <b id="origin"></b> — 구글 클라우드의 ‘승인된 JavaScript 원본’에 이 주소를 넣어야 해요.</p>
+    </div>
+  </section>
+
+  <!-- 로그인 -->
+  <section id="login" hidden>
+    <div class="card">
+      <p style="margin:0">유튜브 채널이 있는 구글 계정으로 로그인하세요. 채널 선택 화면이 나오면 <b>감정기록보관소</b>를 고르세요.</p>
+      <button class="primary" id="btnLogin">구글로 로그인</button>
+      <p class="msg" id="loginErr" hidden></p>
+    </div>
+  </section>
+
+  <!-- 본문 -->
+  <div id="main" hidden style="display:flex;flex-direction:column;gap:22px">
+    <div class="links">
+      <a class="btn primary" id="lnkStudio" target="_blank" rel="noopener" href="https://studio.youtube.com">스튜디오</a>
+      <a class="btn" id="lnkMon" target="_blank" rel="noopener" href="https://studio.youtube.com">수익 창출</a>
+      <a class="btn" id="lnkCh" target="_blank" rel="noopener" href="https://www.youtube.com">내 채널</a>
+      <button id="btnRefresh">새로고침</button>
+    </div>
+
+    <section>
+      <div class="stats">
+        <div class="stat"><b id="subs">–</b><span>구독자</span></div>
+        <div class="stat"><b id="views">–</b><span>총 조회수</span></div>
+        <div class="stat"><b id="vids">–</b><span>영상</span></div>
+      </div>
+      <p class="note" id="updated"></p>
+      <p class="msg" id="mainErr" hidden></p>
+    </section>
+
+    <section>
+      <h2>수익화 4,000시간</h2>
+      <div class="card">
+        <div class="row"><span>롱폼 시청시간 (최근 365일)</span><b id="hrs">–</b></div>
+        <div class="gauge"><i id="gauge"></i></div>
+        <div class="row"><span>마감까지</span><b id="days">–</b></div>
+        <div class="row"><span>하루에 필요한 시간</span><b id="perDay">–</b></div>
+        <div class="row"><span>최근 28일 롱폼 하루 평균</span><b id="pace">–</b></div>
+        <div id="verdict"></div>
+        <div class="row"><label for="deadline" class="note">마감일</label><input id="deadline" type="date" style="width:auto"></div>
+        <p class="note">광고로 들어온 시청시간도 섞여 있어 실제보다 조금 높게 나와요. 공식 숫자는 ‘수익 창출’ 버튼에서 확인하세요.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>기간별 추이</h2>
+      <div class="tabs" id="rangeTabs">
+        <button data-d="7">7일</button><button data-d="28" aria-pressed="true">28일</button><button data-d="90">90일</button><button data-d="365">1년</button>
+      </div>
+      <div class="card">
+        <svg id="spark" viewBox="0 0 320 120" role="img" aria-label="일별 시청시간"></svg>
+        <div class="row"><span class="note" id="sum"></span></div>
+        <div class="split" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><span class="note">롱폼</span><div class="row"><b id="longH">–</b></div></div>
+          <div><span class="note">쇼츠</span><div class="row"><b id="shortH">–</b></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>많이 본 영상</h2>
+      <div class="card tbl"><table>
+        <thead><tr><th>영상</th><th>조회</th><th>시청(분)</th><th>시청률</th><th>구독</th></tr></thead>
+        <tbody id="top"></tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>시청자는 어디서 왔나</h2>
+      <div class="card bars" id="traffic"></div>
+    </section>
+
+    <section>
+      <h2>시청자층</h2>
+      <div class="card bars" id="demo"></div>
+    </section>
+
+    <button id="btnLogout">로그아웃</button>
+  </div>
+</div>
+
+<script>
+const SCOPES="https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly";
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const fmt=n=>n>=10000?(n/10000).toFixed(1).replace(/\.0$/,"")+"만":Number(n).toLocaleString();
+const kst=d=>new Date(d.getTime()+9*3600e3).toISOString().slice(0,10);
+const ago=n=>kst(new Date(Date.now()-n*86400e3));
+let token=null,tokenClient=null,channel=null,range=28;
+
+function show(id,t){const e=$(id);if(!t){e.hidden=true;return}e.textContent=t;e.hidden=false}
+function view(name){["setup","login","main"].forEach(s=>{$(s).hidden=s!==name});if(name==="main")$("main").style.display="flex"}
+
+$("origin").textContent=location.origin;
+$("cid").value=store.get("cid")||"";
+$("deadline").value=store.get("deadline")||"2027-01-31";
+$("deadline").onchange=()=>{store.set("deadline",$("deadline").value);renderHours()};
+$("btnSettings").onclick=()=>view("setup");
+$("btnSaveCid").onclick=()=>{const v=$("cid").value.trim();if(!/\.apps\.googleusercontent\.com$/.test(v)){alert("끝이 .apps.googleusercontent.com 인 값을 붙여넣어 주세요.");return}store.set("cid",v);tokenClient=null;view("login")};
+$("btnLogout").onclick=()=>{if(token&&window.google)google.accounts.oauth2.revoke(token,()=>{});token=null;view("login")};
+$("btnRefresh").onclick=()=>loadAll();
+
+function initClient(){
+  const cid=store.get("cid"); if(!cid||!window.google?.accounts?.oauth2)return false;
+  if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({client_id:cid,scope:SCOPES,callback:r=>{
+    if(r.error){show("loginErr","로그인 실패: "+r.error);return}
+    token=r.access_token;show("loginErr","");view("main");loadAll();
+  }});
+  return true;
+}
+$("btnLogin").onclick=()=>{
+  if(!initClient()){show("loginErr","구글 로그인 도구를 불러오는 중이에요. 2초 뒤 다시 눌러 주세요.");return}
+  tokenClient.requestAccessToken({prompt:"select_account"});
+};
+
+async function api(url){
+  const r=await fetch(url,{headers:{Authorization:"Bearer "+token}});
+  if(r.status===401){token=null;view("login");show("loginErr","로그인 시간이 지났어요. 다시 로그인해 주세요.");throw new Error("401")}
+  const j=await r.json(); if(j.error)throw new Error(j.error.message||"API 오류"); return j;
+}
+const A=(p)=>api("https://youtubeanalytics.googleapis.com/v2/reports?"+new URLSearchParams(Object.assign({ids:"channel==MINE"},p)));
+const col=(j,n)=>(j.columnHeaders||[]).findIndex(h=>h.name===n);
+
+async function loadAll(){
+  show("mainErr","");
+  try{
+    const c=await api("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true");
+    channel=c.items?.[0]; if(!channel){show("mainErr","이 계정에 채널이 없어요. 로그아웃 후 채널을 다시 골라 주세요.");return}
+    const s=channel.statistics,id=channel.id;
+    $("chName").textContent=channel.snippet.title;
+    $("subs").textContent=s.hiddenSubscriberCount?"비공개":Number(s.subscriberCount).toLocaleString();
+    $("views").textContent=fmt(+s.viewCount);$("vids").textContent=s.videoCount;
+    $("lnkStudio").href="https://studio.youtube.com/channel/"+id;
+    $("lnkMon").href="https://studio.youtube.com/channel/"+id+"/monetization";
+    $("lnkCh").href="https://www.youtube.com/channel/"+id;
+    $("updated").textContent=new Date().toLocaleString("ko-KR")+" 기준";
+  }catch(e){if(e.message!=="401")show("mainErr","채널 정보를 못 불러왔어요: "+e.message);return}
+  loadHours();loadRange();loadTop();loadTraffic();loadDemo();
+}
+
+let longMin365=null,longPace=null;
+async function loadHours(){
+  try{
+    const j=await A({startDate:ago(364),endDate:ago(0),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
+    const r=(j.rows||[]).find(x=>x[0]==="videoOnDemand"); longMin365=r?r[1]:0;
+    const p=await A({startDate:ago(28),endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
+    const q=(p.rows||[]).find(x=>x[0]==="videoOnDemand"); longPace=(q?q[1]:0)/28/60;
+    renderHours();
+  }catch(e){$("hrs").textContent="불러오기 실패"}
+}
+function renderHours(){
+  if(longMin365==null)return;
+  const h=longMin365/60,dl=new Date(($("deadline").value||"2027-01-31")+"T23:59:59+09:00");
+  const left=Math.max(0,Math.ceil((dl-Date.now())/86400e3)),need=Math.max(0,4000-h),per=left?need/left:0;
+  $("hrs").textContent=Math.round(h).toLocaleString()+" / 4,000시간";
+  $("gauge").style.width=Math.min(100,h/40)+"%";
+  $("days").textContent=left+"일";$("perDay").textContent=per.toFixed(1)+"시간";
+  $("pace").textContent=longPace.toFixed(1)+"시간";
+  const ratio=per/Math.max(longPace,.01),cls=h>=4000||ratio<=1?"good":ratio<=3?"warn":"bad";
+  $("verdict").innerHTML=`<span class="pill ${cls}">${h>=4000?"달성!":ratio<=1?"지금 속도면 마감 안에 달성해요":"지금보다 "+ratio.toFixed(1)+"배 빨라야 해요"}</span>`;
+}
+
+$("rangeTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;range=+b.dataset.d;
+  [...$("rangeTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));loadRange()};
+async function loadRange(){
+  try{
+    const j=await A({startDate:ago(range),endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained,subscribersLost",dimensions:"day",sort:"day"});
+    const rows=j.rows||[];drawSpark(rows.map(r=>r[2]),rows);
+    const tv=rows.reduce((a,r)=>a+r[1],0),tm=rows.reduce((a,r)=>a+r[2],0),ts=rows.reduce((a,r)=>a+r[3]-r[4],0);
+    $("sum").textContent=`조회 ${fmt(tv)} · 시청 ${Math.round(tm/60).toLocaleString()}시간 · 구독 순증 ${ts>=0?"+":""}${ts}`;
+    const c=await A({startDate:ago(range),endDate:ago(1),metrics:"views,estimatedMinutesWatched",dimensions:"creatorContentType"});
+    const g=t=>(c.rows||[]).find(x=>x[0]===t)||[t,0,0];
+    $("longH").textContent=Math.round(g("videoOnDemand")[2]/60)+"시간 · "+fmt(g("videoOnDemand")[1])+"회";
+    $("shortH").textContent=Math.round(g("shorts")[2]/60)+"시간 · "+fmt(g("shorts")[1])+"회";
+  }catch(e){$("sum").textContent="불러오기 실패: "+e.message}
+}
+function drawSpark(vals,rows){
+  const s=$("spark");s.innerHTML="";if(!vals.length)return;
+  const L=4,R=316,T=14,B=96,mx=Math.max(...vals,1),X=i=>L+(R-L)*i/Math.max(1,vals.length-1),Y=v=>B-(B-T)*v/mx;
+  const ns="http://www.w3.org/2000/svg",mk=(t,a)=>{const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);s.appendChild(e);return e};
+  const d=vals.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+","+Y(v).toFixed(1)).join("");
+  mk("line",{x1:L,x2:R,y1:B,y2:B,stroke:"var(--line)"});
+  mk("path",{d:d+`L${R},${B}L${L},${B}Z`,fill:"var(--accent-soft)"});
+  mk("path",{d,fill:"none",stroke:"var(--accent)","stroke-width":2});
+  const li=vals.length-1;mk("circle",{cx:X(li),cy:Y(vals[li]),r:3.5,fill:"var(--accent)"});
+  const tx=(x,y,t,a)=>{mk("text",{x,y,"text-anchor":a}).textContent=t};
+  tx(L,B+16,rows[0][0].slice(5),"start");tx(R,B+16,rows[li][0].slice(5),"end");
+  tx(R,T-3,"최고 "+(mx/60).toFixed(1)+"시간/일","end");
+}
+
+async function loadTop(){
+  try{
+    const j=await A({startDate:ago(28),endDate:ago(1),metrics:"views,estimatedMinutesWatched,averageViewPercentage,subscribersGained",dimensions:"video",sort:"-estimatedMinutesWatched",maxResults:10});
+    const rows=j.rows||[];if(!rows.length){$("top").innerHTML='<tr><td colspan="5">최근 28일 데이터가 없어요</td></tr>';return}
+    const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+rows.map(r=>r[0]).join(","));
+    const t={};(v.items||[]).forEach(i=>t[i.id]=i.snippet.title);
+    $("top").innerHTML=rows.map(r=>`<tr><td><a href="https://youtu.be/${r[0]}" target="_blank" rel="noopener">${esc(t[r[0]]||r[0])}</a></td><td>${fmt(r[1])}</td><td>${Math.round(r[2]).toLocaleString()}</td><td>${Math.round(r[3])}%</td><td>${r[4]}</td></tr>`).join("");
+  }catch(e){$("top").innerHTML='<tr><td colspan="5">불러오기 실패</td></tr>'}
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const TRN={SHORTS:"쇼츠 피드",ADVERTISING:"광고",YT_CHANNEL:"채널 페이지",PLAYLIST:"재생목록",SUBSCRIBER:"구독 피드",YT_SEARCH:"검색",RELATED_VIDEO:"추천 영상",YT_OTHER_PAGE:"기타 유튜브",NO_LINK_OTHER:"직접·기타",EXT_URL:"외부 링크",NOTIFICATION:"알림",END_SCREEN:"최종 화면",SHORTS_CONTENT_LINKS:"쇼츠 링크",HASHTAGS:"해시태그",SOUND_PAGE:"사운드",ANNOTATION:"카드"};
+async function loadTraffic(){
+  try{
+    const j=await A({startDate:ago(28),endDate:ago(1),metrics:"views,estimatedMinutesWatched",dimensions:"insightTrafficSourceType",sort:"-views"});
+    const r=(j.rows||[]).slice(0,8),tot=(j.rows||[]).reduce((a,x)=>a+x[1],0)||1,mx=r[0]?.[1]||1;
+    $("traffic").innerHTML=r.map(x=>`<div class="bar"><span>${TRN[x[0]]||x[0]}</span><span class="t"><i style="width:${Math.max(2,x[1]/mx*100)}%"></i></span><span class="v">${Math.round(x[1]/tot*100)}%</span></div>`).join("")+'<p class="note">최근 28일 조회 비중. 광고로 온 시청시간은 4,000시간에 안 들어가요.</p>';
+  }catch(e){$("traffic").textContent="불러오기 실패"}
+}
+async function loadDemo(){
+  try{
+    const j=await A({startDate:ago(90),endDate:ago(1),metrics:"viewerPercentage",dimensions:"ageGroup,gender",sort:"ageGroup"});
+    const m={};(j.rows||[]).forEach(([a,g,p])=>{m[a]=m[a]||{male:0,female:0};m[a][g]=(m[a][g]||0)+p});
+    const ages=Object.keys(m);if(!ages.length){$("demo").innerHTML='<p class="note">시청자가 적어 아직 표시되지 않아요</p>';return}
+    const mx=Math.max(...ages.map(a=>m[a].male+m[a].female));
+    $("demo").innerHTML='<p class="note">최근 90일 · <span style="color:var(--accent)">■</span> 남성 <span style="color:var(--warm)">■</span> 여성</p>'+
+      ages.map(a=>`<div class="bar"><span>${a.replace("age","").replace("-","–")}세</span><span class="t"><i style="width:${m[a].male/mx*100}%"></i><i style="width:${m[a].female/mx*100}%;background:var(--warm)"></i></span><span class="v">${(m[a].male+m[a].female).toFixed(1)}%</span></div>`).join("");
+  }catch(e){$("demo").textContent="불러오기 실패"}
+}
+
+// 시작
+view(store.get("cid")?"login":"setup");
+</script>
+</body>
+</html>
