@@ -141,9 +141,13 @@ input{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid va
     </section>
 
     <section>
-      <h2>많이 본 영상</h2>
+      <h2>많이 본 영상 <span class="note" id="topLabel">· 최근 28일</span></h2>
+      <div class="tabs" id="typeTabs">
+        <button data-t="all" aria-pressed="true">전체</button><button data-t="videoOnDemand">롱폼만</button><button data-t="shorts">쇼츠만</button>
+      </div>
+      <p class="note">위 기간 탭을 따라 바뀌어요. 시청시간 많은 순. ‘누적’은 올린 뒤 전체 조회수예요.</p>
       <div class="card tbl"><table>
-        <thead><tr><th>영상</th><th>조회</th><th>시청(분)</th><th>시청률</th><th>구독</th></tr></thead>
+        <thead><tr><th>영상</th><th>기간 조회</th><th>시청(분)</th><th>시청률</th><th>구독</th><th>누적</th></tr></thead>
         <tbody id="top"></tbody>
       </table></div>
     </section>
@@ -181,7 +185,7 @@ function buildReport(){
   if(R.hours)L.push(`롱폼 시청시간(365일): ${R.hours.h}시간 / 4000 · 마감까지 ${R.hours.left}일 · 하루 필요 ${R.hours.per}시간 · 최근28일 롱폼 하루평균 ${R.hours.pace}시간`);
   if(R.range){L.push(`\n[최근 ${R.range.days}일] ${R.range.sum}`);L.push(`롱폼 ${R.range.long} / 쇼츠 ${R.range.short}`);
     if(R.range.daily)L.push("일별(날짜,조회,시청분,구독+,구독-): "+R.range.daily.map(r=>r.join(",")).join(" | "));}
-  if(R.top){L.push("\n[많이 본 영상 28일] 제목 | 조회 | 시청분 | 시청률 | 구독");R.top.forEach(t=>L.push(t.join(" | ")));}
+  if(R.top){L.push("\n[많이 본 영상 "+(R.topLabel||"")+"] 제목 | 기간조회 | 시청분 | 시청률 | 구독 | 누적");R.top.forEach(t=>L.push(t.join(" | ")));}
   if(R.traffic){L.push("\n[유입 경로 28일] "+R.traffic.join(" · "));}
   if(R.demo){L.push("\n[시청자층 90일] "+R.demo.join(" · "));}
   return L.join("\n");
@@ -268,7 +272,10 @@ function renderHours(){
 }
 
 $("rangeTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;range=+b.dataset.d;
-  [...$("rangeTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));loadRange()};
+  [...$("rangeTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));loadRange();loadTop()};
+let ctype="all";
+$("typeTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;ctype=b.dataset.t;
+  [...$("typeTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));loadTop()};
 async function loadRange(){
   try{
     const j=await A({startDate:ago(range),endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained,subscribersLost",dimensions:"day",sort:"day"});
@@ -298,13 +305,19 @@ function drawSpark(vals,rows){
 
 async function loadTop(){
   try{
-    const j=await A({startDate:ago(28),endDate:ago(1),metrics:"views,estimatedMinutesWatched,averageViewPercentage,subscribersGained",dimensions:"video",sort:"-estimatedMinutesWatched",maxResults:10});
-    const rows=j.rows||[];if(!rows.length){$("top").innerHTML='<tr><td colspan="5">최근 28일 데이터가 없어요</td></tr>';return}
-    const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+rows.map(r=>r[0]).join(","));
-    const t={};(v.items||[]).forEach(i=>t[i.id]=i.snippet.title);
-    R.top=rows.map(r=>[t[r[0]]||r[0],r[1],Math.round(r[2]),Math.round(r[3])+"%",r[4]]);
-    $("top").innerHTML=rows.map(r=>`<tr><td><a href="https://youtu.be/${r[0]}" target="_blank" rel="noopener">${esc(t[r[0]]||r[0])}</a></td><td>${fmt(r[1])}</td><td>${Math.round(r[2]).toLocaleString()}</td><td>${Math.round(r[3])}%</td><td>${r[4]}</td></tr>`).join("");
-  }catch(e){$("top").innerHTML='<tr><td colspan="5">불러오기 실패</td></tr>'}
+    const label={all:"",videoOnDemand:" · 롱폼만",shorts:" · 쇼츠만"}[ctype];
+    $("topLabel").textContent="· 최근 "+(range===365?"1년":range+"일")+label;
+    $("top").innerHTML='<tr><td colspan="6">불러오는 중…</td></tr>';
+    const q={startDate:ago(range),endDate:ago(1),metrics:"views,estimatedMinutesWatched,averageViewPercentage,subscribersGained",dimensions:"video",sort:"-estimatedMinutesWatched",maxResults:15};
+    if(ctype!=="all")q.filters="creatorContentType=="+ctype;
+    const j=await A(q);
+    const rows=j.rows||[];if(!rows.length){$("top").innerHTML='<tr><td colspan="6">이 기간 데이터가 없어요</td></tr>';return}
+    const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id="+rows.map(r=>r[0]).join(","));
+    const t={},tot={};(v.items||[]).forEach(i=>{t[i.id]=i.snippet.title;tot[i.id]=+i.statistics.viewCount});
+    R.top=rows.map(r=>[t[r[0]]||r[0],r[1],Math.round(r[2]),Math.round(r[3])+"%",r[4],"누적 "+(tot[r[0]]??"-")]);
+    R.topLabel=$("topLabel").textContent;
+    $("top").innerHTML=rows.map(r=>`<tr><td><a href="https://youtu.be/${r[0]}" target="_blank" rel="noopener">${esc(t[r[0]]||r[0])}</a></td><td>${fmt(r[1])}</td><td>${Math.round(r[2]).toLocaleString()}</td><td>${Math.round(r[3])}%</td><td>${r[4]}</td><td>${tot[r[0]]!=null?fmt(tot[r[0]]):"-"}</td></tr>`).join("");
+  }catch(e){$("top").innerHTML='<tr><td colspan="6">불러오기 실패: '+esc(e.message)+'</td></tr>'}
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
