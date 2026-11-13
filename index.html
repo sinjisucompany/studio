@@ -148,6 +148,7 @@ input{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid va
       <h2>수익화 4,000시간</h2>
       <div class="card">
         <div class="row"><span>롱폼 시청시간 (최근 365일)</span><b id="hrs">–</b></div>
+        <p class="note" id="lagNote" style="margin:2px 0 6px;color:#e0a040">⏳ 시청시간·그래프는 유튜브 분석 기준이라 스튜디오보다 2~3일 늦게 반영돼요.</p>
         <div class="row"><span>광고 뺀 롱폼 시간 (수익화 인정분에 가까움)</span><b id="hrsNoAd">–</b></div>
         <div class="gauge"><i id="gauge"></i></div>
         <div class="row"><span>마감까지</span><b id="days">–</b></div>
@@ -293,7 +294,7 @@ async function loadAll(){
     $("lnkStudio").href="https://studio.youtube.com/channel/"+id;
     $("lnkMon").href="https://studio.youtube.com/channel/"+id+"/monetization";
     $("lnkCh").href="https://www.youtube.com/channel/"+id;
-    $("updated").textContent=new Date().toLocaleString("ko-KR")+" 기준";
+    $("updated").textContent=new Date().toLocaleString("ko-KR")+" 기준 · 구독자·조회수는 거의 실시간 / 시청시간·그래프는 2~3일 늦음";
     R.ch={title:channel.snippet.title,subs:$("subs").textContent,views:s.viewCount,vids:s.videoCount};
   }catch(e){if(e.message!=="401")show("mainErr","채널 정보를 못 불러왔어요: "+e.message);return}
   loadCards();loadHours();loadRange();loadTop();loadTraffic();loadDemo();loadFirst48();
@@ -307,6 +308,7 @@ async function loadHours(){
     const p=await A({startDate:ago(28),endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
     const q=(p.rows||[]).find(x=>x[0]==="videoOnDemand"); longPace=(q?q[1]:0)/28/60;
     renderHours();
+    A({startDate:ago(7),endDate:ago(0),metrics:"views",dimensions:"day",sort:"day"}).then(d=>{const r=(d.rows||[]).filter(x=>x[1]>0);if(!r.length)return;const t=r[r.length-1][0].split("-");$("lagNote").textContent="⏳ 시청시간·그래프는 "+(+t[1])+"월 "+(+t[2])+"일까지 반영됐어요 (유튜브 분석은 스튜디오보다 2~3일 늦어요)."}).catch(()=>{});
     try{
       const t=await A({startDate:ago(364),endDate:ago(0),metrics:"estimatedMinutesWatched",dimensions:"insightTrafficSourceType",filters:"creatorContentType==videoOnDemand"});
       const ad=((t.rows||[]).find(x=>x[0]==="ADVERTISING")||[0,0])[1];
