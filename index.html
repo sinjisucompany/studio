@@ -147,17 +147,19 @@ input{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid va
     <section>
       <h2>수익화 4,000시간</h2>
       <div class="card">
-        <div class="row"><span>롱폼 시청시간 (최근 365일)</span><b id="hrs">–</b></div>
-        <p class="note" id="lagNote" style="margin:2px 0 6px;color:#e0a040">⏳ 시청시간·그래프는 유튜브 분석 기준이라 스튜디오보다 2~3일 늦게 반영돼요.</p>
-        <div class="row"><span>광고 뺀 롱폼 시간 (수익화 인정분에 가까움)</span><b id="hrsNoAd">–</b></div>
+        <div class="row"><span>롱폼 시청시간 (최근 365일, 광고 포함)</span><b id="hrs">–</b></div>
+        <p class="msg" id="lag" hidden></p>
+        <div class="row"><span>광고 뺀 롱폼 시간 (앱 계산)</span><b id="hrsNoAd">–</b></div>
+        <div class="row" style="align-items:center"><label for="official"><b style="font-family:var(--body);font-weight:700;color:var(--accent)">스튜디오 공식 유효 시청시간</b><br><span class="note">수익 창출 화면 숫자를 넣으면 이걸 기준으로 계산해요</span></label><input id="official" type="number" inputmode="numeric" placeholder="예: 438" style="width:7em;text-align:right"></div>
         <div class="gauge"><i id="gauge"></i></div>
         <div class="row"><span>마감까지</span><b id="days">–</b></div>
         <div class="row"><span>하루에 필요한 시간</span><b id="perDay">–</b></div>
-        <div class="row"><span>최근 28일 롱폼 하루 평균</span><b id="pace">–</b></div>
+        <div class="row"><span>최근 28일 롱폼 하루 평균 (광고 뺀 것)</span><b id="pace">–</b></div>
+        <div class="row"><span class="note">참고: 광고 포함 하루 평균</span><b id="paceAll" class="note">–</b></div>
         <div id="verdict"></div>
         <div class="row"><span>지금 속도면 4,000시간 도달</span><b id="eta">–</b></div>
         <div class="row"><label for="deadline" class="note">마감일</label><input id="deadline" type="date" style="width:auto"></div>
-        <p class="note">광고로 들어온 시청시간도 섞여 있어 실제보다 조금 높게 나와요. 공식 숫자는 ‘수익 창출’ 버튼에서 확인하세요.</p>
+        <p class="note">광고로 들어온 시청은 수익화 시간에 안 들어가요 (11/8 공식 438시간 ≈ 앱의 광고 뺀 계산으로 확인됨). 그래서 필요 시간·도달일은 광고 뺀 숫자로 계산해요.</p>
       </div>
     </section>
 
@@ -229,7 +231,8 @@ function buildReport(){
   const L=[];
   L.push("[보관소 스튜디오 리포트] "+new Date().toLocaleString("ko-KR"));
   if(R.ch)L.push(`채널: ${R.ch.title} · 구독자 ${R.ch.subs} · 총조회 ${R.ch.views} · 영상 ${R.ch.vids}`);
-  if(R.hours)L.push(`롱폼 시청시간(365일): ${R.hours.h}시간 / 4000 · 마감까지 ${R.hours.left}일 · 하루 필요 ${R.hours.per}시간 · 최근28일 롱폼 하루평균 ${R.hours.pace}시간`);
+  if(R.hours)L.push(`수익화 기준 시간: ${R.hours.h}시간 / 4000 (${R.hours.base}) · 광고 포함 롱폼 ${R.hours.all}시간 · 마감까지 ${R.hours.left}일 · 하루 필요 ${R.hours.per}시간 · 최근28일 롱폼 하루평균 광고뺀 ${R.hours.pace}시간 (광고포함 ${R.hours.paceAll}시간)`);
+  if(R.lag)L.push("분석 데이터 반영일: "+R.lag);
   if(R.hoursNoAd)L.push("광고 뺀 롱폼 시간(365일): "+R.hoursNoAd);
   if(R.eta)L.push("지금 속도면 4000시간 도달: "+R.eta);
   if(R.first48){L.push("\n[새 롱폼 48시간 성적표] 제목 | 올린날 | 조회 | 시청 | 평소대비");R.first48.forEach(x=>L.push(x));}
@@ -256,6 +259,8 @@ $("origin").textContent=location.origin;
 $("cid").value=store.get("cid")||"";
 $("deadline").value=store.get("deadline")||"2027-01-31";
 $("deadline").onchange=()=>{store.set("deadline",$("deadline").value);renderHours()};
+$("official").value=store.get("official")||"";
+$("official").oninput=()=>{store.set("official",$("official").value);renderHours()};
 $("btnSettings").onclick=()=>view("setup");
 $("btnSaveCid").onclick=()=>{const v=$("cid").value.trim();if(!/\.apps\.googleusercontent\.com$/.test(v)){alert("끝이 .apps.googleusercontent.com 인 값을 붙여넣어 주세요.");return}store.set("cid",v);tokenClient=null;view("login")};
 $("btnLogout").onclick=()=>{if(token&&window.google)google.accounts.oauth2.revoke(token,()=>{});token=null;view("login")};
@@ -294,44 +299,50 @@ async function loadAll(){
     $("lnkStudio").href="https://studio.youtube.com/channel/"+id;
     $("lnkMon").href="https://studio.youtube.com/channel/"+id+"/monetization";
     $("lnkCh").href="https://www.youtube.com/channel/"+id;
-    $("updated").textContent=new Date().toLocaleString("ko-KR")+" 기준 · 구독자·조회수는 거의 실시간 / 시청시간·그래프는 2~3일 늦음";
+    $("updated").textContent=new Date().toLocaleString("ko-KR")+" 기준";
     R.ch={title:channel.snippet.title,subs:$("subs").textContent,views:s.viewCount,vids:s.videoCount};
   }catch(e){if(e.message!=="401")show("mainErr","채널 정보를 못 불러왔어요: "+e.message);return}
   loadCards();loadHours();loadRange();loadTop();loadTraffic();loadDemo();loadFirst48();
 }
 
-let longMin365=null,longPace=null;
+let longMin365=null,longPace=null,adMin365=null,paceNoAd=null;
 async function loadHours(){
   try{
     const j=await A({startDate:ago(364),endDate:ago(0),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
     const r=(j.rows||[]).find(x=>x[0]==="videoOnDemand"); longMin365=r?r[1]:0;
     const p=await A({startDate:ago(28),endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
     const q=(p.rows||[]).find(x=>x[0]==="videoOnDemand"); longPace=(q?q[1]:0)/28/60;
-    renderHours();
-    A({startDate:ago(7),endDate:ago(0),metrics:"views",dimensions:"day",sort:"day"}).then(d=>{const r=(d.rows||[]).filter(x=>x[1]>0);if(!r.length)return;const t=r[r.length-1][0].split("-");$("lagNote").textContent="⏳ 시청시간·그래프는 "+(+t[1])+"월 "+(+t[2])+"일까지 반영됐어요 (유튜브 분석은 스튜디오보다 2~3일 늦어요)."}).catch(()=>{});
     try{
-      const t=await A({startDate:ago(364),endDate:ago(0),metrics:"estimatedMinutesWatched",dimensions:"insightTrafficSourceType",filters:"creatorContentType==videoOnDemand"});
-      const ad=((t.rows||[]).find(x=>x[0]==="ADVERTISING")||[0,0])[1];
-      const noAd=(longMin365-ad)/60;
-      $("hrsNoAd").textContent=Math.round(noAd).toLocaleString()+"시간 (광고 "+Math.round(ad/60)+"시간 제외)";
-      R.hoursNoAd=Math.round(noAd)+"시간 (광고 "+Math.round(ad/60)+"시간 제외)";
+      const [t,t28]=await Promise.all([A({startDate:ago(364),endDate:ago(0),metrics:"estimatedMinutesWatched",dimensions:"insightTrafficSourceType",filters:"creatorContentType==videoOnDemand"}),
+        A({startDate:ago(28),endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"insightTrafficSourceType",filters:"creatorContentType==videoOnDemand"})]);
+      adMin365=((t.rows||[]).find(x=>x[0]==="ADVERTISING")||[0,0])[1];
+      const ad28=((t28.rows||[]).find(x=>x[0]==="ADVERTISING")||[0,0])[1];
+      paceNoAd=Math.max(0,longPace-ad28/28/60);
+      const noAd=(longMin365-adMin365)/60;
+      $("hrsNoAd").textContent=Math.round(noAd).toLocaleString()+"시간 (광고 "+Math.round(adMin365/60)+"시간 제외)";
+      R.hoursNoAd=Math.round(noAd)+"시간 (광고 "+Math.round(adMin365/60)+"시간 제외)";
     }catch(e){$("hrsNoAd").textContent="계산 실패"}
+    renderHours();
+    try{const d=await A({startDate:ago(10),endDate:ago(0),metrics:"views",dimensions:"day",sort:"-day",maxResults:1});
+      const last=d.rows?.[0]?.[0];if(last){const [y,m,dd]=last.split("-");$("lag").hidden=false;$("lag").textContent=`⏳ 시청시간·그래프는 ${+m}월 ${+dd}일까지 반영됐어요 (유튜브 분석은 스튜디오보다 2~3일 늦어요).`;R.lag=last}}catch(_){}
   }catch(e){$("hrs").textContent="불러오기 실패"}
 }
 function renderHours(){
   if(longMin365==null)return;
-  const h=longMin365/60,dl=new Date(($("deadline").value||"2027-01-31")+"T23:59:59+09:00");
+  const all=longMin365/60,off=parseFloat($("official").value),appNoAd=adMin365!=null?(longMin365-adMin365)/60:all;
+  const h=off>0?off:appNoAd,pace=paceNoAd!=null?paceNoAd:longPace;
+  const dl=new Date(($("deadline").value||"2027-01-31")+"T23:59:59+09:00");
   const left=Math.max(0,Math.ceil((dl-Date.now())/86400e3)),need=Math.max(0,4000-h),per=left?need/left:0;
-  $("hrs").textContent=Math.round(h).toLocaleString()+" / 4,000시간";
+  $("hrs").textContent=Math.round(all).toLocaleString()+"시간";
   $("gauge").style.width=Math.min(100,h/40)+"%";
   $("days").textContent=left+"일";$("perDay").textContent=per.toFixed(1)+"시간";
-  $("pace").textContent=longPace.toFixed(1)+"시간";
-  R.hours={h:Math.round(h),left,per:per.toFixed(1),pace:longPace.toFixed(1)};
+  $("pace").textContent=pace.toFixed(1)+"시간";$("paceAll").textContent=longPace.toFixed(1)+"시간";
+  R.hours={h:Math.round(h),base:off>0?"스튜디오 공식":"앱 계산(광고 제외)",all:Math.round(all),left,per:per.toFixed(1),pace:pace.toFixed(1),paceAll:longPace.toFixed(1)};
   if(h>=4000){$("eta").textContent="달성!"}
-  else if(longPace>0.05){const d=new Date(Date.now()+need/longPace*86400e3);const s=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일쯤`;$("eta").textContent=s;R.eta=s}
+  else if(pace>0.05){const d=new Date(Date.now()+need/pace*86400e3);const s=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일쯤`;$("eta").textContent=s;R.eta=s}
   else $("eta").textContent="속도가 너무 느려 계산 불가";
-  const ratio=per/Math.max(longPace,.01),cls=h>=4000||ratio<=1?"good":ratio<=3?"warn":"bad";
-  $("verdict").innerHTML=`<span class="pill ${cls}">${h>=4000?"달성!":ratio<=1?"지금 속도면 마감 안에 달성해요":"지금보다 "+ratio.toFixed(1)+"배 빨라야 해요"}</span>`;
+  const ratio=per/Math.max(pace,.01),cls=h>=4000||ratio<=1?"good":ratio<=3?"warn":"bad";
+  $("verdict").innerHTML=`<span class="pill ${cls}">기준 ${Math.round(h)}시간 (${off>0?"스튜디오 공식":"앱 계산"}) · ${h>=4000?"달성!":ratio<=1?"지금 속도면 마감 안에 달성해요":"지금보다 "+ratio.toFixed(1)+"배 빨라야 해요"}</span>`;
 }
 
 $("rangeTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;range=+b.dataset.d;
@@ -388,15 +399,10 @@ $("cardTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;cardTy
   const rk=cardType==="rank";$("rankBox").hidden=!rk;$("cards").hidden=rk;$("cardHelp").hidden=rk;$("cardLabel").textContent=rk?"· 롱폼 효자영상":"· 누적 시청시간 순";
   if(rk)loadRank();else renderCards()};
 const lifeStart=()=>(channel&&channel.snippet.publishedAt||"2015-01-01").slice(0,10);
-// 누적 조회가 유튜브에서 거절되면(invalid filter 등) 1년 → 90일 → 28일 순서로 자동으로 줄여서 다시 물어봄 (2026-11-13 Opus 수정)
-let LIFE_NOTE="";
-async function tryRanges(p,starts){let last;for(const [st,lab] of starts){try{const j=await A({...p,startDate:st});LIFE_NOTE=lab;return j}catch(e){last=e}}throw last}
-const LIFE_STEPS=()=>[[lifeStart(),""],[ago(364),"최근 1년"],[ago(90),"최근 90일"],[ago(28),"최근 28일"]];
 async function loadCards(){
   try{
     const base={metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",sort:"-estimatedMinutesWatched",maxResults:30};
-    const [life,m28,w1,w0]=await Promise.all([tryRanges({...base,endDate:ago(1),maxResults:50},LIFE_STEPS()),A({...base,startDate:ago(28),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(7),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(14),endDate:ago(8),maxResults:200})]);
-    if(LIFE_NOTE)$("cardLabel").textContent="· "+LIFE_NOTE+" 시청시간 순 (누적은 유튜브가 거절해서 줄였어요)";
+    const [life,m28,w1,w0]=await Promise.all([A({...base,startDate:lifeStart(),endDate:ago(1),maxResults:60}),A({...base,startDate:ago(28),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(7),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(14),endDate:ago(8),maxResults:200})]);
     const map=j=>{const o={};(j.rows||[]).forEach(r=>o[r[0]]={v:r[1],m:r[2],s:r[3]});return o};
     const a=map(w1),b=map(w0),d28=map(m28),rows=life.rows||[];
     if(!rows.length){$("cards").innerHTML='<p class="note">데이터가 없어요</p>';return}
@@ -428,10 +434,9 @@ async function loadRank(){
   try{
     if(!RANK[rankP]){
       box.innerHTML='<p class="note">불러오는 중…</p>';
-      const steps=rankP==="life"?LIFE_STEPS():[[ago(+rankP),""]];
-      const j=await tryRanges({endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",filters:"creatorContentType==videoOnDemand",sort:"-estimatedMinutesWatched",maxResults:10},steps);
-      const st=(steps.find(x=>x[1]===LIFE_NOTE)||steps[0])[0];
-      const tot=await A({startDate:st,endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
+      const st=rankP==="life"?lifeStart():ago(+rankP);
+      const [j,tot]=await Promise.all([A({startDate:st,endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",filters:"creatorContentType==videoOnDemand",sort:"-estimatedMinutesWatched",maxResults:10}),
+        A({startDate:st,endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"})]);
       const rows=j.rows||[];const all=((tot.rows||[]).find(x=>x[0]==="videoOnDemand")||[0,0])[1]||1;
       const info={};if(rows.length){const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+rows.map(r=>r[0]).join(","));(v.items||[]).forEach(i=>info[i.id]=i.snippet)}
       RANK[rankP]={all,rows:rows.map(r=>{const sn=info[r[0]]||{},th=sn.thumbnails||{};return {id:r[0],title:sn.title||r[0],thumb:(th.default||th.medium||{}).url||"",v:r[1],m:r[2],s:r[3]}})};
@@ -457,6 +462,8 @@ async function openDetail(id){
    <h2>${esc(c.title)}</h2><p class="note">${c.long?"롱폼":"쇼츠"} · 올린 날 ${c.pub?c.pub.slice(0,10):"-"} · 누적 ${fmt(c.total)}회 · 댓글 ${c.comments} · <a href="https://youtu.be/${c.id}" target="_blank" rel="noopener" style="color:var(--accent)">영상 보기</a></p>
    <div class="big"><div><b>${Math.round(c.lm/60).toLocaleString()}h</b><span>누적 시청</span></div><div><b>${fmt(c.lv)}</b><span>누적 조회(분석)</span></div><div><b>+${c.ls}</b><span>누적 구독</span></div><div><b>${(c.lv?c.lm/c.lv:0).toFixed(1)}분</b><span>누적 1회당</span></div><div><b>${fmt(c.views)}</b><span>28일 조회</span></div><div><b>${(c.mins/60).toFixed(1)}h</b><span>28일 시청</span></div><div><b>${(c.per).toFixed(1)}분</b><span>1회당 시청</span></div><div><b>+${c.subs}</b><span>28일 구독</span></div></div>
    <div class="card"><b>일별 추이 · 90일 <span class="meas">측정</span></b><svg id="dChart" viewBox="0 0 320 140"></svg><p class="note" id="dNote"></p></div>
+   <div class="card"><b>광고 효과 · 60일 <span class="meas">측정</span></b><p class="note">광고가 끝난 뒤에도 유튜브가 추천해 주는지 보는 칸이에요. 광고 조회수보다 <b>보라 막대(광고 아닌 조회)</b>가 진짜 성적이고, 이것만 4,000시간에 들어가요.</p><svg id="dAdChart" viewBox="0 0 320 120"></svg><p class="note"><span style="color:var(--bad)">■</span> 광고 조회 <span style="color:var(--accent)">■</span> 광고 아닌 조회</p><div id="dAd"><p class="note">불러오는 중…</p></div></div>
+   <div class="card"><b>어떤 화면으로 봤나 · 28일 <span class="meas">측정</span></b><p class="note">TV 비중이 높고 1회당 시청이 길면 ‘틀어 둔’ 시청일 가능성이 커요.</p><div class="bars" id="dDev"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>어디서 왔나 · 28일 <span class="meas">측정</span></b><div class="bars" id="dTraffic"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>어느 영상에서 넘어왔나 · 90일 <span class="meas">측정</span></b><p class="note">추천 영상·최종 화면으로 이 영상에 들어온 출발 영상이에요. 낙수 효과를 직접 재는 숫자예요.</p><div class="bars" id="dFrom"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>시청자 나이 · 90일 <span class="meas">측정</span></b><div class="bars" id="dAge"><p class="note">불러오는 중…</p></div></div>
@@ -475,11 +482,49 @@ async function openDetail(id){
     let names={};try{const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+all.map(x=>x[0]).join(","));(v.items||[]).forEach(i=>names[i.id]={t:i.snippet.title,mine:i.snippet.channelId===channel.id})}catch(_){}
     const mx=all[0][1]||1;D.from=all.map(x=>[(names[x[0]]||{}).t||x[0],x[1]]);
     $("dFrom").innerHTML=all.map(x=>{const n=names[x[0]]||{};return `<div class="bar" style="grid-template-columns:minmax(0,1fr) 5em 3.2em"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.t||x[0])}${n.mine===false?' <span class="note">(다른 채널)</span>':""}</span><span class="t"><i style="width:${Math.max(4,x[1]/mx*100)}%"></i></span><span class="v">${x[1]}회</span></div>`}).join("")}).catch(()=>$("dFrom").innerHTML='<p class="note">불러오기 실패</p>');
+  loadAdEffect(f,D);
+  A({startDate:ago(28),endDate:ago(1),metrics:"views,estimatedMinutesWatched",dimensions:"deviceType",filters:f,sort:"-views"}).then(j=>{
+    const r=j.rows||[],tot=r.reduce((a,x)=>a+x[1],0)||1,mx=r[0]?.[1]||1,DN={DESKTOP:"컴퓨터",MOBILE:"휴대폰",TABLET:"태블릿",TV:"TV",GAME_CONSOLE:"게임기",UNKNOWN_PLATFORM:"알 수 없음"};
+    D.dev=r.map(x=>`${DN[x[0]]||x[0]} ${Math.round(x[1]/tot*100)}%(1회당 ${(x[1]?x[2]/x[1]:0).toFixed(1)}분)`);
+    $("dDev").innerHTML=r.length?r.map(x=>`<div class="bar" style="grid-template-columns:5em minmax(0,1fr) 7.5em"><span>${DN[x[0]]||x[0]}</span><span class="t"><i style="width:${Math.max(2,x[1]/mx*100)}%;${x[0]==="TV"?"background:var(--warm)":""}"></i></span><span class="v">${Math.round(x[1]/tot*100)}% · ${(x[1]?x[2]/x[1]:0).toFixed(1)}분</span></div>`).join(""):'<p class="note">데이터 없음</p>'}).catch(()=>$("dDev").innerHTML='<p class="note">불러오기 실패</p>');
   A({startDate:ago(90),endDate:ago(1),metrics:"viewerPercentage",dimensions:"ageGroup,gender",filters:f,sort:"ageGroup"}).then(j=>{
     const m={};(j.rows||[]).forEach(([a,g,p])=>{m[a]=m[a]||{male:0,female:0};m[a][g]=(m[a][g]||0)+p});const ages=Object.keys(m);
     if(!ages.length){$("dAge").innerHTML='<p class="note">시청자가 적어 유튜브가 공개하지 않아요.</p>';return}
     const mx=Math.max(...ages.map(a=>m[a].male+m[a].female));D.age=ages.map(a=>`${a.replace("age","")} ${(m[a].male+m[a].female).toFixed(0)}%`);
     $("dAge").innerHTML=ages.map(a=>`<div class="bar"><span>${a.replace("age","").replace("-","–")}세</span><span class="t"><i style="width:${m[a].male/mx*100}%"></i><i style="width:${m[a].female/mx*100}%;background:var(--warm)"></i></span><span class="v">${(m[a].male+m[a].female).toFixed(0)}%</span></div>`).join("")+'<p class="note"><span style="color:var(--accent)">■</span> 남성 <span style="color:var(--warm)">■</span> 여성</p>'}).catch(()=>$("dAge").innerHTML='<p class="note">불러오기 실패</p>');
+}
+const REC=["RELATED_VIDEO","SUBSCRIBER","YT_OTHER_PAGE"];
+async function loadAdEffect(f,D){
+  try{
+    const j=await A({startDate:ago(60),endDate:ago(1),metrics:"views,estimatedMinutesWatched",dimensions:"day,insightTrafficSourceType",filters:f,sort:"day"});
+    const days={};(j.rows||[]).forEach(([d,t,v,m])=>{const o=days[d]=days[d]||{ad:0,org:0,rec:0,orgM:0};if(t==="ADVERTISING")o.ad+=v;else{o.org+=v;o.orgM+=m;if(REC.includes(t))o.rec+=v}});
+    const ks=Object.keys(days).sort();if(!ks.length){$("dAd").innerHTML='<p class="note">데이터 없음</p>';return}
+    const adDays=ks.filter(k=>days[k].ad>0);
+    const sum=(arr,k)=>arr.reduce((a,d)=>a+days[d][k],0);
+    drawAd(ks,days);
+    if(!adDays.length){const s=`광고 없음 · 60일 자연 조회 ${sum(ks,"org")}회 · 자연 시청 ${(sum(ks,"orgM")/60).toFixed(1)}h · 유튜브가 띄워준 조회 ${sum(ks,"rec")}회`;$("dAd").innerHTML=`<p class="note">${s}</p>`;D.ad=s;return}
+    const a0=adDays[0],a1=adDays.at(-1),during=ks.filter(k=>k>=a0&&k<=a1),after=ks.filter(k=>k>a1),before=ks.filter(k=>k<a0);
+    const per=(arr,k)=>arr.length?sum(arr,k)/arr.length:0;
+    const lines=[
+      ["광고 기간",`${a0.slice(5)}~${a1.slice(5)} (${during.length}일)`],
+      ["광고 조회",`${sum(during,"ad").toLocaleString()}회`],
+      ["광고 기간 자연 조회",`${sum(during,"org")}회 · ${(sum(during,"orgM")/60).toFixed(1)}h · 추천 ${sum(during,"rec")}회`],
+      ["광고 끝난 뒤",after.length?`${after.length}일 · 하루 ${per(after,"org").toFixed(1)}회 · 추천 ${sum(after,"rec")}회 · ${(sum(after,"orgM")/60).toFixed(1)}h`:"아직 광고 중이거나 데이터 대기"],
+      ["광고 전 평소",before.length?`하루 ${per(before,"org").toFixed(1)}회`:"광고로 시작"]];
+    const lift=before.length&&after.length?per(after,"org")/Math.max(per(before,"org"),.1):null;
+    const verdict=after.length?(per(after,"rec")>=3||(lift&&lift>=1.5)?["good","광고가 추천을 깨웠어요 — 끝난 뒤에도 유튜브가 띄워주는 중"]:["warn","광고가 끝나자 같이 꺼졌어요 — 추천으로 이어지지 않음"]):["","광고 끝난 뒤 며칠 지나야 판정돼요"];
+    $("dAd").innerHTML=lines.map(x=>`<div class="row"><span>${x[0]}</span><b>${x[1]}</b></div>`).join("")+`<span class="pill ${verdict[0]}">${verdict[1]}</span>`;
+    D.ad=lines.map(x=>x.join(": ")).join(" · ")+" · 판정: "+verdict[1];
+  }catch(e){$("dAd").innerHTML='<p class="note">불러오기 실패: '+esc(e.message)+'</p>'}
+}
+function drawAd(ks,days){
+  const s=$("dAdChart");s.innerHTML="";const L=4,R=316,T=8,B=100,mx=Math.max(...ks.map(k=>days[k].ad+days[k].org),1),bw=Math.max(1,(R-L)/ks.length-1);
+  const ns="http://www.w3.org/2000/svg",mk=(t,a)=>{const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);s.appendChild(e);return e};
+  ks.forEach((k,i)=>{const x=L+(R-L)*i/ks.length,o=days[k],ho=(B-T)*o.org/mx,ha=(B-T)*o.ad/mx;
+    mk("rect",{x,y:B-ho,width:bw,height:ho,fill:"var(--accent)"});mk("rect",{x,y:B-ho-ha,width:bw,height:ha,fill:"var(--bad)",opacity:.75})});
+  mk("line",{x1:L,x2:R,y1:B,y2:B,stroke:"var(--line)"});
+  const tx=(x,y,t,a)=>{mk("text",{x,y,"text-anchor":a}).textContent=t};
+  tx(L,116,ks[0].slice(5),"start");tx(R,116,ks.at(-1).slice(5),"end");
 }
 function drawDaily(r){
   const s=$("dChart");s.innerHTML="";if(!r.length){$("dNote").textContent="데이터 없음";return}
@@ -501,6 +546,8 @@ function detailReport(D){
   if(D.traffic){const tot=D.traffic.reduce((s,x)=>s+x[1],0)||1;L.push("유입 28일: "+D.traffic.map(x=>`${TRN[x[0]]||x[0]} ${x[1]}회(${Math.round(x[1]/tot*100)}%)`).join(" · "));}
   if(D.from)L.push("넘어온 영상 90일: "+(D.from.length?D.from.map(x=>`${x[0]} ${x[1]}회`).join(" · "):"거의 없음"));
   if(D.age)L.push("시청자 나이 90일: "+D.age.join(" · "));
+  if(D.ad)L.push("광고 효과 60일: "+D.ad);
+  if(D.dev)L.push("기기 28일: "+D.dev.join(" · "));
   L.push("\n요청: 이 영상의 정체성(감정·형식·시청자)과 '다음에 재현할 요소 / 바꿔볼 실험'을 제안해줘.");
   return L.join("\n");
 }
