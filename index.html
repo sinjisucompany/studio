@@ -386,10 +386,15 @@ $("cardTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;cardTy
   const rk=cardType==="rank";$("rankBox").hidden=!rk;$("cards").hidden=rk;$("cardHelp").hidden=rk;$("cardLabel").textContent=rk?"· 롱폼 효자영상":"· 누적 시청시간 순";
   if(rk)loadRank();else renderCards()};
 const lifeStart=()=>(channel&&channel.snippet.publishedAt||"2015-01-01").slice(0,10);
+// 누적 조회가 유튜브에서 거절되면(invalid filter 등) 1년 → 90일 → 28일 순서로 자동으로 줄여서 다시 물어봄 (2026-11-13 Opus 수정)
+let LIFE_NOTE="";
+async function tryRanges(p,starts){let last;for(const [st,lab] of starts){try{const j=await A({...p,startDate:st});LIFE_NOTE=lab;return j}catch(e){last=e}}throw last}
+const LIFE_STEPS=()=>[[lifeStart(),""],[ago(364),"최근 1년"],[ago(90),"최근 90일"],[ago(28),"최근 28일"]];
 async function loadCards(){
   try{
     const base={metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",sort:"-estimatedMinutesWatched",maxResults:30};
-    const [life,m28,w1,w0]=await Promise.all([A({...base,startDate:lifeStart(),endDate:ago(1),maxResults:60}),A({...base,startDate:ago(28),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(7),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(14),endDate:ago(8),maxResults:200})]);
+    const [life,m28,w1,w0]=await Promise.all([tryRanges({...base,endDate:ago(1),maxResults:50},LIFE_STEPS()),A({...base,startDate:ago(28),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(7),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(14),endDate:ago(8),maxResults:200})]);
+    if(LIFE_NOTE)$("cardLabel").textContent="· "+LIFE_NOTE+" 시청시간 순 (누적은 유튜브가 거절해서 줄였어요)";
     const map=j=>{const o={};(j.rows||[]).forEach(r=>o[r[0]]={v:r[1],m:r[2],s:r[3]});return o};
     const a=map(w1),b=map(w0),d28=map(m28),rows=life.rows||[];
     if(!rows.length){$("cards").innerHTML='<p class="note">데이터가 없어요</p>';return}
@@ -421,9 +426,10 @@ async function loadRank(){
   try{
     if(!RANK[rankP]){
       box.innerHTML='<p class="note">불러오는 중…</p>';
-      const st=rankP==="life"?lifeStart():ago(+rankP);
-      const [j,tot]=await Promise.all([A({startDate:st,endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",filters:"creatorContentType==videoOnDemand",sort:"-estimatedMinutesWatched",maxResults:10}),
-        A({startDate:st,endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"})]);
+      const steps=rankP==="life"?LIFE_STEPS():[[ago(+rankP),""]];
+      const j=await tryRanges({endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",filters:"creatorContentType==videoOnDemand",sort:"-estimatedMinutesWatched",maxResults:10},steps);
+      const st=(steps.find(x=>x[1]===LIFE_NOTE)||steps[0])[0];
+      const tot=await A({startDate:st,endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"});
       const rows=j.rows||[];const all=((tot.rows||[]).find(x=>x[0]==="videoOnDemand")||[0,0])[1]||1;
       const info={};if(rows.length){const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+rows.map(r=>r[0]).join(","));(v.items||[]).forEach(i=>info[i.id]=i.snippet)}
       RANK[rankP]={all,rows:rows.map(r=>{const sn=info[r[0]]||{},th=sn.thumbnails||{};return {id:r[0],title:sn.title||r[0],thumb:(th.default||th.medium||{}).url||"",v:r[1],m:r[2],s:r[3]}})};
