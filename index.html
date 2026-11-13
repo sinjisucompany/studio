@@ -59,13 +59,20 @@ input{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid va
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tabs button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
 [hidden]{display:none!important}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media(max-width:420px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.vc .hb{font-family:var(--mono);font-size:1.15rem;font-weight:600;color:var(--accent);line-height:1.1}.vc .hb span{display:block;font-family:var(--body);font-size:.62rem;font-weight:400;color:var(--muted)}
+.rk{display:grid;grid-template-columns:1.6em 64px minmax(0,1fr);gap:8px;align-items:center;cursor:pointer;padding:6px 0;border-bottom:1px solid var(--line)}
+.rk img{width:64px;aspect-ratio:16/9;object-fit:cover;border-radius:4px;background:var(--line)}
+.rk .no{font-family:var(--mono);font-weight:600;color:var(--accent);text-align:center}
+.rk .tt{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk .tr{display:flex;align-items:center;gap:6px;margin-top:3px}.rk .tr i{display:block;height:10px;border-radius:3px;background:var(--accent)}.rk .tr b{font-family:var(--mono);font-size:.78rem;font-weight:500;white-space:nowrap}
 .vc{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;font:inherit;color:inherit}
 .vc:hover{border-color:var(--accent)}
 .vc img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--line)}
-.vc .b{padding:10px;display:flex;flex-direction:column;gap:6px}
-.vc .t{font-size:.82rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.2em}
-.vc .n{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-family:var(--mono);font-size:.78rem}
+.vc .b{padding:8px;display:flex;flex-direction:column;gap:6px}
+.vc .t{font-size:.74rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.2em}
+.vc .n{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;font-family:var(--mono);font-size:.7rem}
 .vc .n span{color:var(--muted);font-family:var(--body);font-size:.66rem;display:block}
 .up2{color:var(--good)}.down2{color:var(--bad)}
 .badges{display:flex;gap:4px;flex-wrap:wrap}
@@ -130,9 +137,10 @@ input{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid va
     </section>
 
     <section>
-      <h2>영상 카드 <span class="note">· 최근 28일 시청시간 순</span></h2>
-      <div class="tabs" id="cardTabs"><button data-t="all" aria-pressed="true">전체</button><button data-t="long">롱폼만</button><button data-t="short">쇼츠만</button></div>
-      <p class="note">▲▼ = 이번 주 조회 vs 지난주. 배지: <span class="bd fast">급성장</span> 지난주의 1.5배+ · <span class="bd deep">오래 봄</span> 1회당 시청이 평균의 2배+ · <span class="bd sub">구독 엔진</span> 28일 구독 +3. 카드를 누르면 상세 분석이 열려요.</p>
+      <h2>영상 카드 <span class="note" id="cardLabel">· 누적 시청시간 순</span></h2>
+      <div class="tabs" id="cardTabs"><button data-t="all" aria-pressed="true">전체</button><button data-t="long">롱폼만</button><button data-t="short">쇼츠만</button><button data-t="rank">효자 TOP10</button></div>
+      <div id="rankBox" hidden><div class="tabs" id="rankTabs" style="margin:8px 0"><button data-p="life" aria-pressed="true">누적</button><button data-p="365">1년</button><button data-p="28">28일</button></div><p class="note">롱폼만, 시청시간 순위. 막대 = 시청시간, % = 롱폼 전체 시간 중 비중. 누르면 상세 분석.</p><div id="rankList"><p class="note">불러오는 중…</p></div></div>
+      <p class="note" id="cardHelp">큰 보라 숫자 = 누적 시청시간. ▲▼ = 이번 주 조회 vs 지난주. 배지: <span class="bd fast">급성장</span> 지난주의 1.5배+ · <span class="bd deep">오래 봄</span> 1회당 시청이 평균의 2배+ · <span class="bd sub">구독 엔진</span> 28일 구독 +3. 카드를 누르면 상세 분석이 열려요.</p>
       <div class="cards" id="cards"><p class="note">불러오는 중…</p></div>
     </section>
 
@@ -226,6 +234,7 @@ function buildReport(){
   if(R.first48){L.push("\n[새 롱폼 48시간 성적표] 제목 | 올린날 | 조회 | 시청 | 평소대비");R.first48.forEach(x=>L.push(x));}
   if(R.range){L.push(`\n[최근 ${R.range.days}일] ${R.range.sum}`);L.push(`롱폼 ${R.range.long} / 쇼츠 ${R.range.short}`);
     if(R.range.daily)L.push("일별(날짜,조회,시청분,구독+,구독-): "+R.range.daily.map(r=>r.join(",")).join(" | "));}
+  if(R.rank){L.push("\n[효자영상 TOP10 롱폼 · "+(R.rank.p==="life"?"누적":R.rank.p+"일")+"]");R.rank.list.forEach(t=>L.push(t));}
   if(R.top){L.push("\n[많이 본 영상 "+(R.topLabel||"")+"] 제목 | 기간조회 | 시청분 | 시청률 | 구독 | 누적");R.top.forEach(t=>L.push(t.join(" | ")));}
   if(R.traffic){L.push("\n[유입 경로 28일] "+R.traffic.join(" · "));}
   if(R.demo){L.push("\n[시청자층 90일] "+R.demo.join(" · "));}
@@ -373,25 +382,28 @@ async function loadTop(){
 }
 // ===== 영상 카드 =====
 let CARDS=[],cardType="all";
-$("cardTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;cardType=b.dataset.t;[...$("cardTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderCards()};
+$("cardTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;cardType=b.dataset.t;[...$("cardTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  const rk=cardType==="rank";$("rankBox").hidden=!rk;$("cards").hidden=rk;$("cardHelp").hidden=rk;$("cardLabel").textContent=rk?"· 롱폼 효자영상":"· 누적 시청시간 순";
+  if(rk)loadRank();else renderCards()};
+const lifeStart=()=>(channel&&channel.snippet.publishedAt||"2015-01-01").slice(0,10);
 async function loadCards(){
   try{
     const base={metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",sort:"-estimatedMinutesWatched",maxResults:30};
-    const [m28,w1,w0]=await Promise.all([A({...base,startDate:ago(28),endDate:ago(1)}),A({...base,startDate:ago(7),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(14),endDate:ago(8),maxResults:200})]);
+    const [life,m28,w1,w0]=await Promise.all([A({...base,startDate:lifeStart(),endDate:ago(1),maxResults:60}),A({...base,startDate:ago(28),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(7),endDate:ago(1),maxResults:200}),A({...base,startDate:ago(14),endDate:ago(8),maxResults:200})]);
     const map=j=>{const o={};(j.rows||[]).forEach(r=>o[r[0]]={v:r[1],m:r[2],s:r[3]});return o};
-    const a=map(w1),b=map(w0),rows=m28.rows||[];
-    if(!rows.length){$("cards").innerHTML='<p class="note">최근 28일 데이터가 없어요</p>';return}
+    const a=map(w1),b=map(w0),d28=map(m28),rows=life.rows||[];
+    if(!rows.length){$("cards").innerHTML='<p class="note">데이터가 없어요</p>';return}
     const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id="+rows.map(r=>r[0]).join(","));
     const info={};(v.items||[]).forEach(i=>info[i.id]=i);
     const mpv=rows.map(r=>r[1]?r[2]/r[1]:0).sort((x,y)=>x-y),med=mpv[Math.floor(mpv.length/2)]||0;
-    CARDS=rows.map(r=>{const id=r[0],i=info[id]||{},sn=i.snippet||{},th=sn.thumbnails||{};
+    CARDS=rows.map(r=>{const id=r[0],i=info[id]||{},sn=i.snippet||{},th=sn.thumbnails||{},q=d28[id]||{v:0,m:0,s:0};
       const now=(a[id]||{}).v||0,prev=(b[id]||{}).v||0,g=prev?(now-prev)/prev*100:(now?100:0);
       const per=r[1]?r[2]/r[1]:0,badges=[];
       if(now>=30&&now>=prev*1.5)badges.push(["fast","급성장"]);
       if(med&&per>=med*2&&r[1]>=10)badges.push(["deep","오래 봄"]);
-      if(r[3]>=3)badges.push(["sub","구독 엔진"]);
+      if(q.s>=3)badges.push(["sub","구독 엔진"]);
       return {id,title:sn.title||id,thumb:(th.medium||th.default||{}).url||"",long:secs((i.contentDetails||{}).duration)>180,
-        views:r[1],mins:r[2],subs:r[3],now,prev,g,per,badges,total:+((i.statistics||{}).viewCount||0),comments:+((i.statistics||{}).commentCount||0),pub:sn.publishedAt};});
+        lv:r[1],lm:r[2],ls:r[3],views:q.v,mins:q.m,subs:q.s,now,prev,g,per,badges,total:+((i.statistics||{}).viewCount||0),comments:+((i.statistics||{}).commentCount||0),pub:sn.publishedAt};});
     renderCards();
   }catch(e){$("cards").innerHTML='<p class="msg">불러오기 실패: '+esc(e.message)+'</p>'}
 }
@@ -399,8 +411,32 @@ function renderCards(){
   const list=CARDS.filter(c=>cardType==="all"||(cardType==="long"?c.long:!c.long));
   if(!list.length){$("cards").innerHTML='<p class="note">해당 영상이 없어요</p>';return}
   $("cards").innerHTML=list.map(c=>{const arrow=c.g>0?`<span class="up2">▲${Math.round(c.g)}%</span>`:c.g<0?`<span class="down2">▼${Math.round(-c.g)}%</span>`:'<span class="note">–</span>';
-    return `<button class="vc" data-cid="${c.id}"><img src="${c.thumb}" alt="" loading="lazy"><div class="b"><div class="badges"><span class="bd" style="background:var(--line);color:var(--muted)">${c.long?"롱폼":"쇼츠"}</span>${c.badges.map(x=>`<span class="bd ${x[0]}">${x[1]}</span>`).join("")}</div><div class="t">${esc(c.title)}</div><div class="n"><div>${fmt(c.views)}<span>조회</span></div><div>${(c.mins/60).toFixed(1)}h<span>시청</span></div><div>+${c.subs}<span>구독</span></div></div><div style="font-size:.8rem;font-family:var(--mono)">${arrow} <span class="note">이번 주 ${c.now}회</span></div></div></button>`}).join("");
+    return `<button class="vc" data-cid="${c.id}"><img src="${c.thumb}" alt="" loading="lazy"><div class="b"><div class="badges"><span class="bd" style="background:var(--line);color:var(--muted)">${c.long?"롱폼":"쇼츠"}</span>${c.badges.map(x=>`<span class="bd ${x[0]}">${x[1]}</span>`).join("")}</div><div class="t">${esc(c.title)}</div><div class="hb">${Math.round(c.lm/60).toLocaleString()}h<span>누적 시청</span></div><div class="n"><div>${fmt(c.lv)}<span>누적조회</span></div><div>${(c.mins/60).toFixed(1)}h<span>28일</span></div><div>+${c.ls}<span>누적구독</span></div></div><div style="font-size:.8rem;font-family:var(--mono)">${arrow} <span class="note">주 ${c.now}회</span></div></div></button>`}).join("");
 }
+// ===== 효자 TOP10 =====
+let rankP="life";const RANK={};
+$("rankTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;rankP=b.dataset.p;[...$("rankTabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));loadRank()};
+async function loadRank(){
+  const box=$("rankList");
+  try{
+    if(!RANK[rankP]){
+      box.innerHTML='<p class="note">불러오는 중…</p>';
+      const st=rankP==="life"?lifeStart():ago(+rankP);
+      const [j,tot]=await Promise.all([A({startDate:st,endDate:ago(1),metrics:"views,estimatedMinutesWatched,subscribersGained",dimensions:"video",filters:"creatorContentType==videoOnDemand",sort:"-estimatedMinutesWatched",maxResults:10}),
+        A({startDate:st,endDate:ago(1),metrics:"estimatedMinutesWatched",dimensions:"creatorContentType"})]);
+      const rows=j.rows||[];const all=((tot.rows||[]).find(x=>x[0]==="videoOnDemand")||[0,0])[1]||1;
+      const info={};if(rows.length){const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+rows.map(r=>r[0]).join(","));(v.items||[]).forEach(i=>info[i.id]=i.snippet)}
+      RANK[rankP]={all,rows:rows.map(r=>{const sn=info[r[0]]||{},th=sn.thumbnails||{};return {id:r[0],title:sn.title||r[0],thumb:(th.default||th.medium||{}).url||"",v:r[1],m:r[2],s:r[3]}})};
+    }
+    const R0=RANK[rankP],mx=R0.rows[0]?.m||1;
+    if(!R0.rows.length){box.innerHTML='<p class="note">이 기간 롱폼 데이터가 없어요</p>';return}
+    const top=R0.rows.reduce((a,x)=>a+x.m,0);
+    R.rank={p:rankP,list:R0.rows.map((x,i)=>`${i+1}. ${x.title} ${Math.round(x.m/60)}h(${Math.round(x.m/R0.all*100)}%) 조회${x.v} 구독+${x.s}`)};
+    box.innerHTML=R0.rows.map((x,i)=>`<div class="rk" data-rid="${x.id}"><span class="no">${i+1}</span><img src="${x.thumb}" alt="" loading="lazy"><div><div class="tt">${esc(x.title)}</div><div class="tr"><i style="width:${Math.max(3,x.m/mx*70)}%"></i><b>${Math.round(x.m/60).toLocaleString()}h</b><span class="note">${Math.round(x.m/R0.all*100)}% · ${fmt(x.v)}회 · +${x.s}</span></div></div></div>`).join("")
+      +`<p class="note">TOP10 합계 ${Math.round(top/60).toLocaleString()}h = 롱폼 전체 ${Math.round(R0.all/60).toLocaleString()}h 중 ${Math.round(top/R0.all*100)}%</p>`;
+  }catch(e){box.innerHTML='<p class="msg">불러오기 실패: '+esc(e.message)+'</p>'}
+}
+$("rankList").addEventListener("click",e=>{const b=e.target.closest(".rk");if(!b)return;const id=b.dataset.rid;if(CARDS.find(x=>x.id===id))openDetail(id);else window.open("https://youtu.be/"+id,"_blank")});
 $("cards").addEventListener("click",e=>{const b=e.target.closest(".vc");if(b)openDetail(b.dataset.cid)});
 
 // ===== 상세 화면 =====
@@ -411,7 +447,7 @@ async function openDetail(id){
    <p class="msg" id="shMsg" hidden></p>
    <img src="${c.thumb.replace("mqdefault","hqdefault")}" alt="" style="width:100%;border-radius:12px;aspect-ratio:16/9;object-fit:cover">
    <h2>${esc(c.title)}</h2><p class="note">${c.long?"롱폼":"쇼츠"} · 올린 날 ${c.pub?c.pub.slice(0,10):"-"} · 누적 ${fmt(c.total)}회 · 댓글 ${c.comments} · <a href="https://youtu.be/${c.id}" target="_blank" rel="noopener" style="color:var(--accent)">영상 보기</a></p>
-   <div class="big"><div><b>${fmt(c.views)}</b><span>28일 조회</span></div><div><b>${(c.mins/60).toFixed(1)}h</b><span>28일 시청</span></div><div><b>${(c.per).toFixed(1)}분</b><span>1회당 시청</span></div><div><b>+${c.subs}</b><span>28일 구독</span></div></div>
+   <div class="big"><div><b>${Math.round(c.lm/60).toLocaleString()}h</b><span>누적 시청</span></div><div><b>${fmt(c.lv)}</b><span>누적 조회(분석)</span></div><div><b>+${c.ls}</b><span>누적 구독</span></div><div><b>${(c.lv?c.lm/c.lv:0).toFixed(1)}분</b><span>누적 1회당</span></div><div><b>${fmt(c.views)}</b><span>28일 조회</span></div><div><b>${(c.mins/60).toFixed(1)}h</b><span>28일 시청</span></div><div><b>${(c.per).toFixed(1)}분</b><span>1회당 시청</span></div><div><b>+${c.subs}</b><span>28일 구독</span></div></div>
    <div class="card"><b>일별 추이 · 90일 <span class="meas">측정</span></b><svg id="dChart" viewBox="0 0 320 140"></svg><p class="note" id="dNote"></p></div>
    <div class="card"><b>어디서 왔나 · 28일 <span class="meas">측정</span></b><div class="bars" id="dTraffic"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>어느 영상에서 넘어왔나 · 90일 <span class="meas">측정</span></b><p class="note">추천 영상·최종 화면으로 이 영상에 들어온 출발 영상이에요. 낙수 효과를 직접 재는 숫자예요.</p><div class="bars" id="dFrom"><p class="note">불러오는 중…</p></div></div>
@@ -450,7 +486,7 @@ function drawDaily(r){
   $("dNote").innerHTML=`회색 막대 = 조회 · <span style="color:var(--accent)">선</span> = 시청시간 · <span style="color:var(--good)">●</span> = 구독 생긴 날 &nbsp;|&nbsp; 90일 합계 조회 ${fmt(tv)} · 시청 ${(tm/60).toFixed(1)}h · 구독 +${ts}`;
 }
 function detailReport(D){
-  const c=D.c,L=[`[영상 상세 리포트] ${c.title}`,`${c.long?"롱폼":"쇼츠"} · 올린 날 ${c.pub?c.pub.slice(0,10):"-"} · 누적 ${c.total}회 · 댓글 ${c.comments}`,
+  const c=D.c,L=[`[영상 상세 리포트] ${c.title}`,`${c.long?"롱폼":"쇼츠"} · 올린 날 ${c.pub?c.pub.slice(0,10):"-"} · 누적 ${c.total}회 · 댓글 ${c.comments}`,`누적: 시청 ${Math.round(c.lm/60)}h · 조회 ${c.lv} · 구독 +${c.ls}`,
    `28일: 조회 ${c.views} · 시청 ${(c.mins/60).toFixed(1)}h · 1회당 ${c.per.toFixed(1)}분 · 구독 +${c.subs} · 이번주 ${c.now}회 / 지난주 ${c.prev}회 · 배지: ${c.badges.map(x=>x[1]).join(",")||"없음"}`];
   if(D.daily){const r=D.daily;L.push(`90일 합계: 조회 ${r.reduce((a,x)=>a+x[1],0)} · 시청 ${Math.round(r.reduce((a,x)=>a+x[2],0))}분 · 구독 +${r.reduce((a,x)=>a+x[3],0)}`);
     L.push("주별 조회: "+Array.from({length:Math.ceil(r.length/7)},(_,k)=>r.slice(k*7,k*7+7)).map(w=>`${w[0][0].slice(5)}~ ${w.reduce((a,x)=>a+x[1],0)}회/${Math.round(w.reduce((a,x)=>a+x[2],0))}분/+${w.reduce((a,x)=>a+x[3],0)}`).join(" | "));}
