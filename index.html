@@ -413,8 +413,9 @@ async function loadCards(){
     const map=j=>{const o={};(j.rows||[]).forEach(r=>o[r[0]]={v:r[1],m:r[2],s:r[3]});return o};
     const a=map(w1),b=map(w0),d28=map(m28),rows=life.rows||[];
     if(!rows.length){$("cards").innerHTML='<p class="note">데이터가 없어요</p>';return}
-    const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id="+rows.map(r=>r[0]).join(","));
-    const info={};(v.items||[]).forEach(i=>info[i.id]=i);
+    // 유튜브 영상 정보는 한 번에 50개까지만 물을 수 있어서 50개씩 나눠서 물어요 (60개를 한 번에 물으면 "invalid filter" 오류)
+    const ids=rows.map(r=>r[0]),info={};
+    for(let k=0;k<ids.length;k+=50){const v=await api("https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id="+ids.slice(k,k+50).join(","));(v.items||[]).forEach(i=>info[i.id]=i)}
     const mpv=rows.map(r=>r[1]?r[2]/r[1]:0).sort((x,y)=>x-y),med=mpv[Math.floor(mpv.length/2)]||0;
     CARDS=rows.map(r=>{const id=r[0],i=info[id]||{},sn=i.snippet||{},th=sn.thumbnails||{},q=d28[id]||{v:0,m:0,s:0};
       const now=(a[id]||{}).v||0,prev=(b[id]||{}).v||0,g=prev?(now-prev)/prev*100:(now?100:0);
@@ -472,7 +473,7 @@ async function openDetail(id){
    <div class="big"><div><b>${Math.round(c.lm/60).toLocaleString()}h</b><span>누적 시청</span></div><div><b>${fmt(c.lv)}</b><span>누적 조회(분석)</span></div><div><b>+${c.ls}</b><span>누적 구독</span></div><div><b>${(c.lv?c.lm/c.lv:0).toFixed(1)}분</b><span>누적 1회당</span></div><div><b>${fmt(c.views)}</b><span>28일 조회</span></div><div><b>${(c.mins/60).toFixed(1)}h</b><span>28일 시청</span></div><div><b>${(c.per).toFixed(1)}분</b><span>1회당 시청</span></div><div><b>+${c.subs}</b><span>28일 구독</span></div></div>
    <div class="card"><b>일별 추이 · 90일 <span class="meas">측정</span></b><svg id="dChart" viewBox="0 0 320 140"></svg><p class="note" id="dNote"></p></div>
    <div class="card"><b>광고 효과 · 60일 <span class="meas">측정</span></b><p class="note">광고가 끝난 뒤에도 유튜브가 추천해 주는지 보는 칸이에요. 광고 조회수보다 <b>보라 막대(광고 아닌 조회)</b>가 진짜 성적이고, 이것만 4,000시간에 들어가요.</p><svg id="dAdChart" viewBox="0 0 320 120"></svg><p class="note"><span style="color:var(--bad)">■</span> 광고 조회 <span style="color:var(--accent)">■</span> 광고 아닌 조회</p><div id="dAd"><p class="note">불러오는 중…</p></div></div>
-   <div class="card"><b>어떤 화면으로 봤나 · 28일 <span class="meas">측정</span></b><p class="note">TV 비중이 높고 1회당 시청이 길면 ‘틀어 둔’ 시청일 가능성이 커요.</p><div class="bars" id="dDev"><p class="note">불러오는 중…</p></div></div>
+   <div class="card"><b>어떤 화면으로 봤나 · 28일 <span class="meas">측정</span></b><p class="note">어떤 화면에서, 1회당 얼마나 봤는지예요.</p><div class="bars" id="dDev"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>어디서 왔나 · 28일 <span class="meas">측정</span></b><div class="bars" id="dTraffic"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>어느 영상에서 넘어왔나 · 90일 <span class="meas">측정</span></b><p class="note">추천 영상·최종 화면으로 이 영상에 들어온 출발 영상이에요. 낙수 효과를 직접 재는 숫자예요.</p><div class="bars" id="dFrom"><p class="note">불러오는 중…</p></div></div>
    <div class="card"><b>시청자 나이 · 90일 <span class="meas">측정</span></b><div class="bars" id="dAge"><p class="note">불러오는 중…</p></div></div>
